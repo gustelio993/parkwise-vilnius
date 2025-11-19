@@ -14,7 +14,7 @@ const Welcome = ({ onComplete }: WelcomeProps) => {
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 mb-4">
             <MapPin className="w-10 h-10 text-primary" />
           </div>
-          <h1 className="text-4xl font-bold text-foreground">ParkVilnius</h1>
+          <h1 className="text-4xl font-bold text-foreground">ParkWell</h1>
           <p className="text-muted-foreground text-lg">
             Find parking fast. Help others. Earn rewards.
           </p>

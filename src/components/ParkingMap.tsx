@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { MapPin, Navigation } from "lucide-react";
 import { toast } from "sonner";
 
-// Mapbox public token (publishable key - safe for client-side use)
-// Users should replace this with their own token from https://mapbox.com
-mapboxgl.accessToken = "pk.eyJ1IjoibG92YWJsZS1kZW1vIiwiYSI6ImNtNTBxeWw4ZzBkZXYyanNkaGQ0ZzJ6OHQifQ.6LZ8FqVmEp_L3ZN9FZJy8Q";
+// IMPORTANT: Replace with your own Mapbox token from https://account.mapbox.com/access-tokens/
+// Free tier: 50,000 monthly map loads at no cost
+// This is a publishable key - safe to store in code
+mapboxgl.accessToken = "YOUR_MAPBOX_TOKEN_HERE";
 
 const ParkingMap = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -29,6 +30,14 @@ const ParkingMap = () => {
   // Initialize map
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
+
+    // Check if token is set
+    if (!mapboxgl.accessToken || mapboxgl.accessToken === "YOUR_MAPBOX_TOKEN_HERE") {
+      toast.error("Mapbox token required", {
+        description: "Get your free token at mapbox.com to enable the map",
+      });
+      return;
+    }
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
@@ -150,6 +159,33 @@ const ParkingMap = () => {
   return (
     <div className="w-full h-full relative">
       <div ref={mapContainer} className="absolute inset-0" />
+      
+      {/* Token Required Message */}
+      {(!mapboxgl.accessToken || mapboxgl.accessToken === "YOUR_MAPBOX_TOKEN_HERE") && (
+        <div className="absolute inset-0 flex items-center justify-center bg-muted">
+          <div className="text-center p-6 max-w-md">
+            <MapPin className="w-16 h-16 text-primary mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-foreground mb-2">Map Setup Required</h3>
+            <p className="text-muted-foreground mb-4">
+              To display the interactive map, you need a free Mapbox token.
+            </p>
+            <div className="space-y-2 text-sm text-left bg-card p-4 rounded-lg border border-border">
+              <p className="font-semibold">Quick setup:</p>
+              <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                <li>Visit mapbox.com and sign up (free)</li>
+                <li>Copy your access token</li>
+                <li>Add it to src/components/ParkingMap.tsx line 12</li>
+              </ol>
+            </div>
+            <Button 
+              onClick={() => window.open("https://account.mapbox.com/access-tokens/", "_blank")}
+              className="mt-4 bg-primary hover:bg-accent"
+            >
+              Get Free Token
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Legend */}
       <div className="absolute top-4 left-4 bg-card/95 backdrop-blur-sm border border-border rounded-lg p-3 shadow-lg z-10">
