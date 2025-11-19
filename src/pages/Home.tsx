@@ -32,7 +32,7 @@ const Home = () => {
         <div className="flex items-center gap-2">
           <MapPin className="w-6 h-6 text-primary" />
           <div>
-            <h1 className="font-bold text-foreground">ParkVilnius</h1>
+            <h1 className="font-bold text-foreground">ParkWell</h1>
             <p className="text-xs text-muted-foreground">Vilnius City Center</p>
           </div>
         </div>
