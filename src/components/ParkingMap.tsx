@@ -1,76 +1,158 @@
+import { useEffect, useRef, useState } from "react";
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
 import { Badge } from "@/components/ui/badge";
-import { MapPin } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { MapPin, Navigation } from "lucide-react";
+import { toast } from "sonner";
+
+// Mapbox public token (publishable key - safe for client-side use)
+// Users should replace this with their own token from https://mapbox.com
+mapboxgl.accessToken = "pk.eyJ1IjoibG92YWJsZS1kZW1vIiwiYSI6ImNtNTBxeWw4ZzBkZXYyanNkaGQ0ZzJ6OHQifQ.6LZ8FqVmEp_L3ZN9FZJy8Q";
 
 const ParkingMap = () => {
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<mapboxgl.Map | null>(null);
+  const userMarker = useRef<mapboxgl.Marker | null>(null);
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+
+  // Parking spots with real Vilnius coordinates
   const parkingSpots = [
-    { id: 1, name: "Gedimino pr.", status: "free", x: "25%", y: "30%" },
-    { id: 2, name: "Vilniaus g.", status: "taken", x: "60%", y: "45%" },
-    { id: 3, name: "Konstitucijos pr.", status: "free", x: "40%", y: "60%" },
-    { id: 4, name: "Žirmūnų g.", status: "taken", x: "70%", y: "25%" },
-    { id: 5, name: "Ozo g. Parking", status: "free", x: "80%", y: "70%" },
-    { id: 6, name: "Savanorių pr.", status: "free", x: "15%", y: "55%" },
+    { id: 1, name: "Gedimino pr.", status: "free", lng: 25.2798, lat: 54.6872 },
+    { id: 2, name: "Vilniaus g.", status: "taken", lng: 25.2876, lat: 54.6816 },
+    { id: 3, name: "Konstitucijos pr.", status: "free", lng: 25.2656, lat: 54.6896 },
+    { id: 4, name: "Žirmūnų g.", status: "taken", lng: 25.2995, lat: 54.7015 },
+    { id: 5, name: "Ozo g. Parking", status: "free", lng: 25.2421, lat: 54.7241 },
+    { id: 6, name: "Savanorių pr.", status: "free", lng: 25.2598, lat: 54.6954 },
   ];
 
+  // Initialize map
+  useEffect(() => {
+    if (!mapContainer.current || map.current) return;
+
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: "mapbox://styles/mapbox/streets-v12",
+      center: [25.2797, 54.6872], // Vilnius city center
+      zoom: 13,
+      pitch: 45,
+    });
+
+    // Add navigation controls
+    map.current.addControl(
+      new mapboxgl.NavigationControl({
+        visualizePitch: true,
+      }),
+      "top-right"
+    );
+
+    // Add parking spot markers
+    parkingSpots.forEach((spot) => {
+      const el = document.createElement("div");
+      el.className = "parking-marker";
+      el.innerHTML = `
+        <div class="w-10 h-10 rounded-full flex items-center justify-center shadow-lg cursor-pointer transition-transform hover:scale-110 ${
+          spot.status === "free"
+            ? "bg-success"
+            : "bg-taken"
+        }">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
+        </div>
+      `;
+
+      const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
+        <div class="p-2">
+          <p class="font-semibold text-sm mb-1">${spot.name}</p>
+          <span class="inline-block px-2 py-0.5 text-xs rounded ${
+            spot.status === "free"
+              ? "bg-success text-white"
+              : "bg-taken text-white"
+          }">
+            ${spot.status === "free" ? "Available" : "Occupied"}
+          </span>
+        </div>
+      `);
+
+      new mapboxgl.Marker(el)
+        .setLngLat([spot.lng, spot.lat])
+        .setPopup(popup)
+        .addTo(map.current!);
+    });
+
+    return () => {
+      map.current?.remove();
+    };
+  }, []);
+
+  // GPS tracking
+  useEffect(() => {
+    if (!map.current) return;
+
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        const { longitude, latitude } = position.coords;
+        setUserLocation([longitude, latitude]);
+
+        // Create or update user marker
+        if (!userMarker.current) {
+          const el = document.createElement("div");
+          el.className = "user-location-marker";
+          el.innerHTML = `
+            <div class="relative">
+              <div class="w-6 h-6 bg-blue-500 rounded-full border-4 border-white shadow-lg animate-pulse"></div>
+              <div class="absolute inset-0 w-6 h-6 bg-blue-400 rounded-full animate-ping opacity-75"></div>
+            </div>
+          `;
+
+          userMarker.current = new mapboxgl.Marker(el)
+            .setLngLat([longitude, latitude])
+            .addTo(map.current!);
+        } else {
+          userMarker.current.setLngLat([longitude, latitude]);
+        }
+      },
+      (error) => {
+        console.error("Error getting location:", error);
+        toast.error("Unable to access location", {
+          description: "Please enable location services",
+        });
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 5000,
+        maximumAge: 0,
+      }
+    );
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+    };
+  }, []);
+
+  // Center map on user location
+  const centerOnUser = () => {
+    if (userLocation && map.current) {
+      map.current.flyTo({
+        center: userLocation,
+        zoom: 15,
+        duration: 1500,
+      });
+    } else {
+      toast.error("Location not available", {
+        description: "Waiting for GPS signal...",
+      });
+    }
+  };
+
   return (
-    <div className="w-full h-full bg-muted relative overflow-hidden">
-      {/* Simplified map background */}
-      <div className="absolute inset-0 opacity-20">
-        <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="0.5"/>
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#grid)" />
-        </svg>
-      </div>
-
-      {/* Streets overlay */}
-      <div className="absolute inset-0 opacity-30">
-        <div className="absolute top-1/3 left-0 right-0 h-1 bg-foreground/20"></div>
-        <div className="absolute top-1/2 left-0 right-0 h-1.5 bg-foreground/30"></div>
-        <div className="absolute top-2/3 left-0 right-0 h-1 bg-foreground/20"></div>
-        <div className="absolute left-1/4 top-0 bottom-0 w-1 bg-foreground/20"></div>
-        <div className="absolute left-1/2 top-0 bottom-0 w-1.5 bg-foreground/30"></div>
-        <div className="absolute left-3/4 top-0 bottom-0 w-1 bg-foreground/20"></div>
-      </div>
-
-      {/* Parking spots */}
-      {parkingSpots.map((spot) => (
-        <button
-          key={spot.id}
-          className="absolute -translate-x-1/2 -translate-y-1/2 transition-transform hover:scale-110 group"
-          style={{ left: spot.x, top: spot.y }}
-        >
-          <div className="relative">
-            <div
-              className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg ${
-                spot.status === "free"
-                  ? "bg-success text-success-foreground"
-                  : "bg-taken text-taken-foreground"
-              }`}
-            >
-              <MapPin className="w-6 h-6" />
-            </div>
-            
-            {/* Tooltip */}
-            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-              <div className="bg-card border border-border rounded-lg px-3 py-2 shadow-lg whitespace-nowrap">
-                <p className="text-sm font-medium text-card-foreground">{spot.name}</p>
-                <Badge
-                  variant={spot.status === "free" ? "default" : "destructive"}
-                  className="mt-1 text-xs"
-                >
-                  {spot.status === "free" ? "Available" : "Occupied"}
-                </Badge>
-              </div>
-            </div>
-          </div>
-        </button>
-      ))}
+    <div className="w-full h-full relative">
+      <div ref={mapContainer} className="absolute inset-0" />
 
       {/* Legend */}
-      <div className="absolute top-4 left-4 bg-card/95 backdrop-blur-sm border border-border rounded-lg p-3 shadow-lg">
+      <div className="absolute top-4 left-4 bg-card/95 backdrop-blur-sm border border-border rounded-lg p-3 shadow-lg z-10">
         <div className="space-y-2 text-sm">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-success"></div>
@@ -80,8 +162,32 @@ const ParkingMap = () => {
             <div className="w-3 h-3 rounded-full bg-taken"></div>
             <span className="text-card-foreground">Occupied</span>
           </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+            <span className="text-card-foreground">Your location</span>
+          </div>
         </div>
       </div>
+
+      {/* Location button */}
+      <Button
+        onClick={centerOnUser}
+        size="icon"
+        className="absolute bottom-6 left-6 w-12 h-12 rounded-full shadow-lg bg-card hover:bg-card/90 border border-border z-10"
+      >
+        <Navigation className="w-5 h-5 text-primary" />
+      </Button>
+
+      <style>{`
+        .mapboxgl-popup-content {
+          padding: 0;
+          border-radius: 0.5rem;
+        }
+        .mapboxgl-popup-close-button {
+          font-size: 20px;
+          padding: 4px 8px;
+        }
+      `}</style>
     </div>
   );
 };
