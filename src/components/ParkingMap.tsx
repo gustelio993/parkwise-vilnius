@@ -10,7 +10,7 @@ import { useSubscription } from "@/hooks/useSubscription";
 // IMPORTANT: Replace with your own Mapbox token from https://account.mapbox.com/access-tokens/
 // Free tier: 50,000 monthly map loads at no cost
 // This is a publishable key - safe to store in code
-mapboxgl.accessToken = "pk.eyJ1IjoiZ3VzdGVsaW8iLCJhIjoiY21pZXBicjQwMDRuZjNnczlmaHJtOWVnZSJ9.qJzRrJczj9JPnuXLI2oDtA";
+mapboxgl.accessToken = pk.eyJ1IjoiZ3VzdGVsaW8iLCJhIjoiY21pZXBicjQwMDRuZjNnczlmaHJtOWVnZSJ9.qJzRrJczj9JPnuXLI2oDtA;
 
 const ParkingMap = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -27,19 +27,22 @@ const ParkingMap = () => {
     { id: 4, name: "Žirmūnų g.", status: "taken", lng: 25.2995, lat: 54.7015, street: "Žirmūnų g." },
     { id: 5, name: "Ozo g. Parking", status: "free", lng: 25.2421, lat: 54.7241, street: "Ozo g." },
     { id: 6, name: "Savanorių pr.", status: "free", lng: 25.2598, lat: 54.6954, street: "Savanorių pr." },
-    { id: 7, name: "Gedimino pr.", status: "taken", lng: 25.2810, lat: 54.6865, street: "Gedimino pr." },
-    { id: 8, name: "Vilniaus g.", status: "free", lng: 25.2890, lat: 54.6820, street: "Vilniaus g." },
+    { id: 7, name: "Gedimino pr.", status: "taken", lng: 25.281, lat: 54.6865, street: "Gedimino pr." },
+    { id: 8, name: "Vilniaus g.", status: "free", lng: 25.289, lat: 54.682, street: "Vilniaus g." },
   ];
 
   // Aggregate streets by availability for free users
-  const streetAvailability = parkingSpots.reduce((acc, spot) => {
-    if (!acc[spot.street]) {
-      acc[spot.street] = { free: 0, taken: 0, spots: [] };
-    }
-    acc[spot.street][spot.status === "free" ? "free" : "taken"]++;
-    acc[spot.street].spots.push(spot);
-    return acc;
-  }, {} as Record<string, { free: number; taken: number; spots: typeof parkingSpots }>);
+  const streetAvailability = parkingSpots.reduce(
+    (acc, spot) => {
+      if (!acc[spot.street]) {
+        acc[spot.street] = { free: 0, taken: 0, spots: [] };
+      }
+      acc[spot.street][spot.status === "free" ? "free" : "taken"]++;
+      acc[spot.street].spots.push(spot);
+      return acc;
+    },
+    {} as Record<string, { free: number; taken: number; spots: typeof parkingSpots }>,
+  );
 
   const getStreetColor = (street: { free: number; taken: number }) => {
     const total = street.free + street.taken;
@@ -112,7 +115,7 @@ const ParkingMap = () => {
       Object.entries(streetAvailability).forEach(([streetName, data]) => {
         const centerSpot = data.spots[0]; // Use first spot as center
         const { color, label } = getStreetColor(data);
-        
+
         const el = document.createElement("div");
         el.className = "street-marker";
         el.innerHTML = `
