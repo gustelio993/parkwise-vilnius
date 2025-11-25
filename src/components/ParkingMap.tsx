@@ -3,8 +3,9 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Navigation } from "lucide-react";
+import { MapPin, Navigation, Lock } from "lucide-react";
 import { toast } from "sonner";
+import { useSubscription } from "@/hooks/useSubscription";
 
 // IMPORTANT: Replace with your own Mapbox token from https://account.mapbox.com/access-tokens/
 // Free tier: 50,000 monthly map loads at no cost
@@ -16,16 +17,37 @@ const ParkingMap = () => {
   const map = useRef<mapboxgl.Map | null>(null);
   const userMarker = useRef<mapboxgl.Marker | null>(null);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const { isPremium } = useSubscription();
 
   // Parking spots with real Vilnius coordinates
   const parkingSpots = [
-    { id: 1, name: "Gedimino pr.", status: "free", lng: 25.2798, lat: 54.6872 },
-    { id: 2, name: "Vilniaus g.", status: "taken", lng: 25.2876, lat: 54.6816 },
-    { id: 3, name: "Konstitucijos pr.", status: "free", lng: 25.2656, lat: 54.6896 },
-    { id: 4, name: "Žirmūnų g.", status: "taken", lng: 25.2995, lat: 54.7015 },
-    { id: 5, name: "Ozo g. Parking", status: "free", lng: 25.2421, lat: 54.7241 },
-    { id: 6, name: "Savanorių pr.", status: "free", lng: 25.2598, lat: 54.6954 },
+    { id: 1, name: "Gedimino pr.", status: "free", lng: 25.2798, lat: 54.6872, street: "Gedimino pr." },
+    { id: 2, name: "Vilniaus g.", status: "taken", lng: 25.2876, lat: 54.6816, street: "Vilniaus g." },
+    { id: 3, name: "Konstitucijos pr.", status: "free", lng: 25.2656, lat: 54.6896, street: "Konstitucijos pr." },
+    { id: 4, name: "Žirmūnų g.", status: "taken", lng: 25.2995, lat: 54.7015, street: "Žirmūnų g." },
+    { id: 5, name: "Ozo g. Parking", status: "free", lng: 25.2421, lat: 54.7241, street: "Ozo g." },
+    { id: 6, name: "Savanorių pr.", status: "free", lng: 25.2598, lat: 54.6954, street: "Savanorių pr." },
+    { id: 7, name: "Gedimino pr.", status: "taken", lng: 25.2810, lat: 54.6865, street: "Gedimino pr." },
+    { id: 8, name: "Vilniaus g.", status: "free", lng: 25.2890, lat: 54.6820, street: "Vilniaus g." },
   ];
+
+  // Aggregate streets by availability for free users
+  const streetAvailability = parkingSpots.reduce((acc, spot) => {
+    if (!acc[spot.street]) {
+      acc[spot.street] = { free: 0, taken: 0, spots: [] };
+    }
+    acc[spot.street][spot.status === "free" ? "free" : "taken"]++;
+    acc[spot.street].spots.push(spot);
+    return acc;
+  }, {} as Record<string, { free: number; taken: number; spots: typeof parkingSpots }>);
+
+  const getStreetColor = (street: { free: number; taken: number }) => {
+    const total = street.free + street.taken;
+    const freePercentage = (street.free / total) * 100;
+    if (freePercentage >= 60) return { color: "success", label: "Available" };
+    if (freePercentage >= 30) return { color: "warning", label: "Limited" };
+    return { color: "taken", label: "Full" };
+  };
 
   // Initialize map
   useEffect(() => {
@@ -55,34 +77,74 @@ const ParkingMap = () => {
       "top-right",
     );
 
-    // Add parking spot markers
-    parkingSpots.forEach((spot) => {
-      const el = document.createElement("div");
-      el.className = "parking-marker";
-      el.innerHTML = `
-        <div class="w-10 h-10 rounded-full flex items-center justify-center shadow-lg cursor-pointer transition-transform hover:scale-110 ${
-          spot.status === "free" ? "bg-success" : "bg-taken"
-        }">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
-            <circle cx="12" cy="10" r="3"/>
-          </svg>
-        </div>
-      `;
-
-      const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
-        <div class="p-2">
-          <p class="font-semibold text-sm mb-1">${spot.name}</p>
-          <span class="inline-block px-2 py-0.5 text-xs rounded ${
-            spot.status === "free" ? "bg-success text-white" : "bg-taken text-white"
+    // Add markers based on subscription
+    if (isPremium) {
+      // Premium: Show individual parking spots
+      parkingSpots.forEach((spot) => {
+        const el = document.createElement("div");
+        el.className = "parking-marker";
+        el.innerHTML = `
+          <div class="w-10 h-10 rounded-full flex items-center justify-center shadow-lg cursor-pointer transition-transform hover:scale-110 ${
+            spot.status === "free" ? "bg-success" : "bg-taken"
           }">
-            ${spot.status === "free" ? "Available" : "Occupied"}
-          </span>
-        </div>
-      `);
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+          </div>
+        `;
 
-      new mapboxgl.Marker(el).setLngLat([spot.lng, spot.lat]).setPopup(popup).addTo(map.current!);
-    });
+        const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
+          <div class="p-2">
+            <p class="font-semibold text-sm mb-1">${spot.name}</p>
+            <span class="inline-block px-2 py-0.5 text-xs rounded ${
+              spot.status === "free" ? "bg-success text-white" : "bg-taken text-white"
+            }">
+              ${spot.status === "free" ? "Available" : "Occupied"}
+            </span>
+          </div>
+        `);
+
+        new mapboxgl.Marker(el).setLngLat([spot.lng, spot.lat]).setPopup(popup).addTo(map.current!);
+      });
+    } else {
+      // Free: Show general street availability
+      Object.entries(streetAvailability).forEach(([streetName, data]) => {
+        const centerSpot = data.spots[0]; // Use first spot as center
+        const { color, label } = getStreetColor(data);
+        
+        const el = document.createElement("div");
+        el.className = "street-marker";
+        el.innerHTML = `
+          <div class="w-16 h-16 rounded-full flex items-center justify-center shadow-lg cursor-pointer transition-transform hover:scale-110 bg-${color} border-4 border-white">
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+            </svg>
+          </div>
+        `;
+
+        const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
+          <div class="p-3">
+            <p class="font-semibold text-sm mb-2">${streetName}</p>
+            <div class="flex items-center gap-2 mb-2">
+              <span class="inline-block px-2 py-1 text-xs rounded bg-${color} text-white font-medium">
+                ${label}
+              </span>
+            </div>
+            <p class="text-xs text-muted-foreground">${data.free} free, ${data.taken} occupied</p>
+            <div class="mt-2 pt-2 border-t flex items-center gap-1 text-xs text-muted-foreground">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              Upgrade to see exact spots
+            </div>
+          </div>
+        `);
+
+        new mapboxgl.Marker(el).setLngLat([centerSpot.lng, centerSpot.lat]).setPopup(popup).addTo(map.current!);
+      });
+    }
 
     return () => {
       map.current?.remove();
@@ -179,20 +241,49 @@ const ParkingMap = () => {
       {/* Legend */}
       <div className="absolute top-4 left-4 bg-card/95 backdrop-blur-sm border border-border rounded-lg p-3 shadow-lg z-10">
         <div className="space-y-2 text-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-success"></div>
-            <span className="text-card-foreground">Available</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-taken"></div>
-            <span className="text-card-foreground">Occupied</span>
-          </div>
+          {isPremium ? (
+            <>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-success"></div>
+                <span className="text-card-foreground">Available Spot</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-taken"></div>
+                <span className="text-card-foreground">Occupied Spot</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-success"></div>
+                <span className="text-card-foreground">Available</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-warning"></div>
+                <span className="text-card-foreground">Limited</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-taken"></div>
+                <span className="text-card-foreground">Full</span>
+              </div>
+            </>
+          )}
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-blue-500"></div>
             <span className="text-card-foreground">Your location</span>
           </div>
         </div>
       </div>
+
+      {/* Premium Badge */}
+      {!isPremium && (
+        <div className="absolute top-4 right-4 bg-primary/95 backdrop-blur-sm border border-primary rounded-lg px-3 py-2 shadow-lg z-10">
+          <div className="flex items-center gap-2 text-primary-foreground text-xs font-medium">
+            <Lock className="w-3 h-3" />
+            <span>Free Version</span>
+          </div>
+        </div>
+      )}
 
       {/* Location button */}
       <Button
