@@ -113,18 +113,10 @@ const ParkingMap = () => {
         const centerSpot = data.spots[0]; // Use first spot as center
         const { color, label } = getStreetColor(data);
         
-        // Get proper color values
-        const bgColorMap = {
-          success: '#22c55e',
-          warning: '#f59e0b', 
-          taken: '#ef4444'
-        };
-        const bgColor = bgColorMap[color as keyof typeof bgColorMap];
-        
         const el = document.createElement("div");
         el.className = "street-marker";
         el.innerHTML = `
-          <div class="w-16 h-16 rounded-full flex items-center justify-center shadow-lg cursor-pointer transition-transform hover:scale-110 border-4 border-white" style="background-color: ${bgColor}">
+          <div class="w-16 h-16 rounded-full flex items-center justify-center shadow-lg cursor-pointer transition-transform hover:scale-110 bg-${color} border-4 border-white">
             <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2">
               <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
             </svg>
@@ -135,12 +127,12 @@ const ParkingMap = () => {
           <div class="p-3">
             <p class="font-semibold text-sm mb-2">${streetName}</p>
             <div class="flex items-center gap-2 mb-2">
-              <span class="inline-block px-2 py-1 text-xs rounded font-medium text-white" style="background-color: ${bgColor}">
+              <span class="inline-block px-2 py-1 text-xs rounded bg-${color} text-white font-medium">
                 ${label}
               </span>
             </div>
-            <p class="text-xs text-gray-600">${data.free} free, ${data.taken} occupied</p>
-            <div class="mt-2 pt-2 border-t flex items-center gap-1 text-xs text-gray-500">
+            <p class="text-xs text-muted-foreground">${data.free} free, ${data.taken} occupied</p>
+            <div class="mt-2 pt-2 border-t flex items-center gap-1 text-xs text-muted-foreground">
               <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
                 <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
