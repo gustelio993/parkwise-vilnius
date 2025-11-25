@@ -53,9 +53,9 @@ const Home = () => {
       </header>
 
       {/* Map Container */}
-      <div className="flex-1 relative">
+      <div className="flex-1 relative min-h-[400px]">
         <ParkingMap />
-        
+
         {/* Floating Action Button */}
         <Button
           onClick={() => setIsReportOpen(true)}
