@@ -11,7 +11,7 @@ import { useSubscription } from "@/hooks/useSubscription";
 // IMPORTANT: Replace with your own Mapbox token from https://account.mapbox.com/access-tokens/
 // Free tier: 50,000 monthly map loads at no cost
 // This is a publishable key - safe to store in code
-mapboxgl.accessToken = "pk.eyJ1IjoiZ3VzdGVsaW8iLCJhIjoiY21pZXE1bnNjMDZlMzNnczljNzhhaWduaiJ9.RUtDl9xiZPMVPCztebfqCw";
+mapboxgl.accessToken = "";
 
 const ParkingMap = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -197,7 +197,7 @@ const ParkingMap = () => {
       },
       (error) => {
         let errorMessage = "Please enable location services";
-        
+
         switch (error.code) {
           case error.PERMISSION_DENIED:
             errorMessage = "Location permission denied. Enable it in browser settings.";
@@ -237,7 +237,7 @@ const ParkingMap = () => {
     setIsSearching(true);
     try {
       const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${mapboxgl.accessToken}&limit=5&proximity=25.2797,54.6872`
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${mapboxgl.accessToken}&limit=5&proximity=25.2797,54.6872`,
       );
       const data = await response.json();
       setSearchResults(data.features || []);
@@ -269,7 +269,7 @@ const ParkingMap = () => {
   const selectLocation = (result: any) => {
     const [lng, lat] = result.center;
     setManualLocation([lng, lat]);
-    
+
     // Update or create manual marker
     if (userMarker.current) {
       userMarker.current.setLngLat([lng, lat]);
@@ -298,7 +298,7 @@ const ParkingMap = () => {
     setIsSearchOpen(false);
     setSearchQuery("");
     setSearchResults([]);
-    
+
     toast.success("Location set", {
       description: result.place_name,
     });
@@ -446,9 +446,7 @@ const ParkingMap = () => {
             </div>
           )}
 
-          {isSearching && (
-            <p className="text-sm text-muted-foreground text-center py-4">Searching...</p>
-          )}
+          {isSearching && <p className="text-sm text-muted-foreground text-center py-4">Searching...</p>}
 
           {!isSearching && searchQuery && searchResults.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-4">No results found</p>
@@ -465,7 +463,7 @@ const ParkingMap = () => {
         >
           <Navigation className="w-5 h-5 text-primary" />
         </Button>
-        
+
         <Button
           onClick={() => setIsSearchOpen(!isSearchOpen)}
           size="icon"
