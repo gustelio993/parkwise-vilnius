@@ -10,7 +10,7 @@ import { useSubscription } from "@/hooks/useSubscription";
 // IMPORTANT: Replace with your own Mapbox token from https://account.mapbox.com/access-tokens/
 // Free tier: 50,000 monthly map loads at no cost
 // This is a publishable key - safe to store in code
-mapboxgl.accessToken = pk.eyJ1IjoiZ3VzdGVsaW8iLCJhIjoiY21pZXBicjQwMDRuZjNnczlmaHJtOWVnZSJ9.qJzRrJczj9JPnuXLI2oDtA;
+mapboxgl.accessToken = "pk.eyJ1IjoiZ3VzdGVsaW8iLCJhIjoiY21pZXBicjQwMDRuZjNnczlmaHJtOWVnZSJ9.qJzRrJczj9JPnuXLI2oDtA";
 
 const ParkingMap = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
