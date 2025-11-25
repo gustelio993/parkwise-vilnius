@@ -11,20 +11,24 @@ const Home = () => {
   const [hasLocationPermission, setHasLocationPermission] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // Check location permission on mount
-    if ("geolocation" in navigator) {
-      navigator.permissions.query({ name: "geolocation" }).then((result) => {
-        setHasLocationPermission(result.state === "granted");
-        
-        if (result.state === "prompt") {
-          toast.info("Location access needed", {
-            description: "Enable location to see nearby parking spots",
-          });
-        }
-      });
+    // Check location permission on mount (with Safari/older browser guard)
+    if ("geolocation" in navigator && "permissions" in navigator && typeof (navigator as any).permissions?.query === "function") {
+      (navigator as any).permissions
+        .query({ name: "geolocation" as PermissionName })
+        .then((result: PermissionStatus) => {
+          setHasLocationPermission(result.state === "granted");
+
+          if (result.state === "prompt") {
+            toast.info("Location access needed", {
+              description: "Enable location to see nearby parking spots",
+            });
+          }
+        })
+        .catch(() => {
+          // Silently ignore permission API errors; map will still work
+        });
     }
   }, []);
-
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
