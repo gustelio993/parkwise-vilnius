@@ -9,7 +9,7 @@ import { toast } from "sonner";
 // IMPORTANT: Replace with your own Mapbox token from https://account.mapbox.com/access-tokens/
 // Free tier: 50,000 monthly map loads at no cost
 // This is a publishable key - safe to store in code
-mapboxgl.accessToken = "pk.eyJ1IjoiZ3VzdGVsaW8iLCJhIjoiY21pZW92cnhsMDQyaDNkcGJzajZiMWdtNyJ9.N74HNVaN9TnTfO9p1izR9w";
+mapboxgl.accessToken = "pk.eyJ1IjoiZ3VzdGVsaW8iLCJhIjoiY21pZXBicjQwMDRuZjNnczlmaHJtOWVnZSJ9.qJzRrJczj9JPnuXLI2oDtA";
 
 const ParkingMap = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
