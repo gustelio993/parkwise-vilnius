@@ -3,7 +3,8 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Navigation, Lock } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { MapPin, Navigation, Lock, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { useSubscription } from "@/hooks/useSubscription";
 
@@ -17,7 +18,14 @@ const ParkingMap = () => {
   const map = useRef<mapboxgl.Map | null>(null);
   const userMarker = useRef<mapboxgl.Marker | null>(null);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [manualLocation, setManualLocation] = useState<[number, number] | null>(null);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const { isPremium } = useSubscription();
+
+  const activeLocation = manualLocation || userLocation;
 
   // Parking spots with real Vilnius coordinates
   const parkingSpots = [
@@ -219,11 +227,88 @@ const ParkingMap = () => {
     };
   }, []);
 
-  // Center map on user location
-  const centerOnUser = () => {
-    if (userLocation && map.current) {
+  // Search for location using Mapbox Geocoding API
+  const searchLocation = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${mapboxgl.accessToken}&limit=5&proximity=25.2797,54.6872`
+      );
+      const data = await response.json();
+      setSearchResults(data.features || []);
+    } catch (error) {
+      console.error("Search error:", error);
+      toast.error("Search failed", {
+        description: "Unable to search for location",
+      });
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Handle search input with debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery) {
+        searchLocation(searchQuery);
+      } else {
+        setSearchResults([]);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Select a location from search results
+  const selectLocation = (result: any) => {
+    const [lng, lat] = result.center;
+    setManualLocation([lng, lat]);
+    
+    // Update or create manual marker
+    if (userMarker.current) {
+      userMarker.current.setLngLat([lng, lat]);
+    } else if (map.current) {
+      const el = document.createElement("div");
+      el.className = "user-location-marker";
+      el.innerHTML = `
+        <div class="relative">
+          <div class="w-6 h-6 bg-blue-500 rounded-full border-4 border-white shadow-lg animate-pulse"></div>
+          <div class="absolute inset-0 w-6 h-6 bg-blue-400 rounded-full animate-ping opacity-75"></div>
+        </div>
+      `;
+      userMarker.current = new mapboxgl.Marker(el).setLngLat([lng, lat]).addTo(map.current);
+    }
+
+    // Fly to location
+    if (map.current) {
       map.current.flyTo({
-        center: userLocation,
+        center: [lng, lat],
+        zoom: 15,
+        duration: 1500,
+      });
+    }
+
+    // Close search
+    setIsSearchOpen(false);
+    setSearchQuery("");
+    setSearchResults([]);
+    
+    toast.success("Location set", {
+      description: result.place_name,
+    });
+  };
+
+  // Center map on active location (GPS or manual)
+  const centerOnUser = () => {
+    if (activeLocation && map.current) {
+      map.current.flyTo({
+        center: activeLocation,
         zoom: 15,
         duration: 1500,
       });
@@ -231,6 +316,15 @@ const ParkingMap = () => {
       toast.error("Location not available", {
         description: "Waiting for GPS signal...",
       });
+    }
+  };
+
+  // Clear manual location and return to GPS
+  const clearManualLocation = () => {
+    setManualLocation(null);
+    if (userLocation) {
+      centerOnUser();
+      toast.info("Using GPS location");
     }
   };
 
@@ -310,14 +404,86 @@ const ParkingMap = () => {
         </div>
       )}
 
-      {/* Location button */}
-      <Button
-        onClick={centerOnUser}
-        size="icon"
-        className="absolute bottom-6 left-6 w-12 h-12 rounded-full shadow-lg bg-card hover:bg-card/90 border border-border z-10"
-      >
-        <Navigation className="w-5 h-5 text-primary" />
-      </Button>
+      {/* Search Overlay */}
+      {isSearchOpen && (
+        <div className="absolute top-4 left-4 right-4 bg-card/95 backdrop-blur-sm border border-border rounded-lg shadow-lg z-20 p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Search className="w-5 h-5 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Search for an address..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1"
+              autoFocus
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                setIsSearchOpen(false);
+                setSearchQuery("");
+                setSearchResults([]);
+              }}
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* Search Results */}
+          {searchResults.length > 0 && (
+            <div className="space-y-1 max-h-64 overflow-y-auto">
+              {searchResults.map((result) => (
+                <button
+                  key={result.id}
+                  onClick={() => selectLocation(result)}
+                  className="w-full text-left p-3 hover:bg-accent rounded-md transition-colors"
+                >
+                  <p className="text-sm font-medium text-foreground">{result.text}</p>
+                  <p className="text-xs text-muted-foreground">{result.place_name}</p>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {isSearching && (
+            <p className="text-sm text-muted-foreground text-center py-4">Searching...</p>
+          )}
+
+          {!isSearching && searchQuery && searchResults.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-4">No results found</p>
+          )}
+        </div>
+      )}
+
+      {/* Location Controls */}
+      <div className="absolute bottom-6 left-6 flex flex-col gap-2 z-10">
+        <Button
+          onClick={centerOnUser}
+          size="icon"
+          className="w-12 h-12 rounded-full shadow-lg bg-card hover:bg-card/90 border border-border"
+        >
+          <Navigation className="w-5 h-5 text-primary" />
+        </Button>
+        
+        <Button
+          onClick={() => setIsSearchOpen(!isSearchOpen)}
+          size="icon"
+          className="w-12 h-12 rounded-full shadow-lg bg-card hover:bg-card/90 border border-border"
+        >
+          <Search className="w-5 h-5 text-primary" />
+        </Button>
+
+        {manualLocation && (
+          <Button
+            onClick={clearManualLocation}
+            size="icon"
+            className="w-12 h-12 rounded-full shadow-lg bg-primary hover:bg-primary/90"
+          >
+            <X className="w-5 h-5 text-primary-foreground" />
+          </Button>
+        )}
+      </div>
 
       <style>{`
         .mapboxgl-popup-content {
