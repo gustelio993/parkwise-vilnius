@@ -9,7 +9,7 @@ import { toast } from "sonner";
 // IMPORTANT: Replace with your own Mapbox token from https://account.mapbox.com/access-tokens/
 // Free tier: 50,000 monthly map loads at no cost
 // This is a publishable key - safe to store in code
-mapboxgl.accessToken = "YOUR_MAPBOX_TOKEN_HERE";
+mapboxgl.accessToken = "pk.eyJ1IjoiZ3VzdGVsaW8iLCJhIjoiY21pZW92cnhsMDQyaDNkcGJzajZiMWdtNyJ9.N74HNVaN9TnTfO9p1izR9w";
 
 const ParkingMap = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -52,7 +52,7 @@ const ParkingMap = () => {
       new mapboxgl.NavigationControl({
         visualizePitch: true,
       }),
-      "top-right"
+      "top-right",
     );
 
     // Add parking spot markers
@@ -61,9 +61,7 @@ const ParkingMap = () => {
       el.className = "parking-marker";
       el.innerHTML = `
         <div class="w-10 h-10 rounded-full flex items-center justify-center shadow-lg cursor-pointer transition-transform hover:scale-110 ${
-          spot.status === "free"
-            ? "bg-success"
-            : "bg-taken"
+          spot.status === "free" ? "bg-success" : "bg-taken"
         }">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
@@ -76,19 +74,14 @@ const ParkingMap = () => {
         <div class="p-2">
           <p class="font-semibold text-sm mb-1">${spot.name}</p>
           <span class="inline-block px-2 py-0.5 text-xs rounded ${
-            spot.status === "free"
-              ? "bg-success text-white"
-              : "bg-taken text-white"
+            spot.status === "free" ? "bg-success text-white" : "bg-taken text-white"
           }">
             ${spot.status === "free" ? "Available" : "Occupied"}
           </span>
         </div>
       `);
 
-      new mapboxgl.Marker(el)
-        .setLngLat([spot.lng, spot.lat])
-        .setPopup(popup)
-        .addTo(map.current!);
+      new mapboxgl.Marker(el).setLngLat([spot.lng, spot.lat]).setPopup(popup).addTo(map.current!);
     });
 
     return () => {
@@ -116,9 +109,7 @@ const ParkingMap = () => {
             </div>
           `;
 
-          userMarker.current = new mapboxgl.Marker(el)
-            .setLngLat([longitude, latitude])
-            .addTo(map.current!);
+          userMarker.current = new mapboxgl.Marker(el).setLngLat([longitude, latitude]).addTo(map.current!);
         } else {
           userMarker.current.setLngLat([longitude, latitude]);
         }
@@ -133,7 +124,7 @@ const ParkingMap = () => {
         enableHighAccuracy: true,
         timeout: 5000,
         maximumAge: 0,
-      }
+      },
     );
 
     return () => {
@@ -159,16 +150,14 @@ const ParkingMap = () => {
   return (
     <div className="w-full h-full relative">
       <div ref={mapContainer} className="absolute inset-0" />
-      
+
       {/* Token Required Message */}
       {(!mapboxgl.accessToken || mapboxgl.accessToken === "YOUR_MAPBOX_TOKEN_HERE") && (
         <div className="absolute inset-0 flex items-center justify-center bg-muted">
           <div className="text-center p-6 max-w-md">
             <MapPin className="w-16 h-16 text-primary mx-auto mb-4" />
             <h3 className="text-xl font-bold text-foreground mb-2">Map Setup Required</h3>
-            <p className="text-muted-foreground mb-4">
-              To display the interactive map, you need a free Mapbox token.
-            </p>
+            <p className="text-muted-foreground mb-4">To display the interactive map, you need a free Mapbox token.</p>
             <div className="space-y-2 text-sm text-left bg-card p-4 rounded-lg border border-border">
               <p className="font-semibold">Quick setup:</p>
               <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
@@ -177,7 +166,7 @@ const ParkingMap = () => {
                 <li>Add it to src/components/ParkingMap.tsx line 12</li>
               </ol>
             </div>
-            <Button 
+            <Button
               onClick={() => window.open("https://account.mapbox.com/access-tokens/", "_blank")}
               className="mt-4 bg-primary hover:bg-accent"
             >
