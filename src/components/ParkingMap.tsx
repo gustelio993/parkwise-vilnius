@@ -158,6 +158,14 @@ const ParkingMap = () => {
   useEffect(() => {
     if (!map.current) return;
 
+    // Check if geolocation is supported
+    if (!("geolocation" in navigator)) {
+      toast.error("Location not supported", {
+        description: "Your browser doesn't support location services",
+      });
+      return;
+    }
+
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
         const { longitude, latitude } = position.coords;
@@ -180,15 +188,29 @@ const ParkingMap = () => {
         }
       },
       (error) => {
-        console.error("Error getting location:", error);
-        toast.error("Unable to access location", {
-          description: "Please enable location services",
+        let errorMessage = "Please enable location services";
+        
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = "Location permission denied. Enable it in browser settings.";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = "Location information unavailable. Try again later.";
+            break;
+          case error.TIMEOUT:
+            errorMessage = "Location request timed out. Check your connection.";
+            break;
+        }
+
+        console.error("Geolocation error:", error.code, error.message);
+        toast.error("Location unavailable", {
+          description: errorMessage,
         });
       },
       {
         enableHighAccuracy: true,
-        timeout: 5000,
-        maximumAge: 0,
+        timeout: 10000, // Increased timeout to 10 seconds
+        maximumAge: 30000, // Cache position for 30 seconds
       },
     );
 
