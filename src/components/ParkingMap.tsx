@@ -33,19 +33,28 @@ const ParkingMap = () => {
 
     // Check if token is set
     if (!mapboxgl.accessToken || mapboxgl.accessToken === "YOUR_MAPBOX_TOKEN_HERE") {
+      console.error("Mapbox token not configured");
       toast.error("Mapbox token required", {
         description: "Get your free token at mapbox.com to enable the map",
       });
       return;
     }
 
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: "mapbox://styles/mapbox/streets-v12",
-      center: [25.2797, 54.6872], // Vilnius city center
-      zoom: 13,
-      pitch: 45,
-    });
+    try {
+      map.current = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: "mapbox://styles/mapbox/streets-v12",
+        center: [25.2797, 54.6872], // Vilnius city center
+        zoom: 13,
+        pitch: 45,
+      });
+    } catch (error) {
+      console.error("Error initializing map:", error);
+      toast.error("Map initialization failed", {
+        description: "Please check your Mapbox token",
+      });
+      return;
+    }
 
     // Add navigation controls
     map.current.addControl(
@@ -151,9 +160,9 @@ const ParkingMap = () => {
     <div className="w-full h-full relative">
       <div ref={mapContainer} className="absolute inset-0" />
 
-      {/* Token Required Message */}
+      {/* Token Required Message - only show if genuinely not configured */}
       {(!mapboxgl.accessToken || mapboxgl.accessToken === "YOUR_MAPBOX_TOKEN_HERE") && (
-        <div className="absolute inset-0 flex items-center justify-center bg-muted">
+        <div className="absolute inset-0 flex items-center justify-center bg-muted z-50">
           <div className="text-center p-6 max-w-md">
             <MapPin className="w-16 h-16 text-primary mx-auto mb-4" />
             <h3 className="text-xl font-bold text-foreground mb-2">Map Setup Required</h3>
